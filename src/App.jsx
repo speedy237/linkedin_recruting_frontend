@@ -3,6 +3,7 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
+import Dashboard from './Chat';
 
 function App() {
   
@@ -17,6 +18,7 @@ function App() {
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [roles, setRoles] = useState([]);
   const [pdfs, setPdfs] = useState([]);
+  const [selectedJobs, setSelectedJobs] = useState([]);
 
 
 
@@ -81,6 +83,13 @@ function App() {
       alert('Une erreur est survenue.');
     }
   };
+  const handleJobUpload = (event) => {
+
+    const files = Array.from(event.target.files); // Convertit FileList en tableau
+    setSelectedJobs(files);
+    
+    
+  };
 
   const processApplication = async () => {
     try {
@@ -99,19 +108,46 @@ function App() {
 
 
   const processJobs = async () => {
+    if (selectedJobs.length === 0) {
+      alert("Veuillez sélectionner au moins un fichier.");
+      return;
+    }
+  
+    const formData = new FormData();
+    selectedJobs.forEach((file) => {
+      formData.append("files", file); // L'API attend "files"
+    });
+  
     try {
-      const response = await fetch('http://localhost:8081/Multiplejobs/');
-
+      const response = await fetch("http://localhost:8081/jobs/", {
+        method: "POST",
+        headers: {
+          accept: "application/json", // L'API attend ce header
+          // ⚠️ Ne pas ajouter 'Content-Type': 'multipart/form-data'
+          // Fetch l'ajoute automatiquement avec le bon boundary
+        },
+        body: formData,
+      });
+  
+      const result = await response.json(); // Convertir la réponse en JSON
+  
       if (response.ok) {
-        alert("Jobs Succefful extract");
+        alert(`✅ ${result.message}\n✔️ Succès : ${result["number of success"]}\n❌ Échecs : ${result["number of failed"]}`);
+        
+        if (result["number of failed"] > 0) {
+          console.warn("Jobs échoués :", result["jobs failed"]);
+          console.warn("Erreurs :", result["errors"]);
+        }
       } else {
-        alert('Error when processing Jobs');
+        alert("❌ Une erreur est survenue lors du traitement des jobs.");
+        console.error("Réponse API :", result);
       }
     } catch (error) {
-      console.error('Erreur:', error);
-      alert('Error An Occure');
+      console.error("Erreur lors de la requête :", error);
+      alert("❌ Une erreur réseau est survenue.");
     }
   };
+  
 
 
   const handleFilter = async () => {
@@ -172,6 +208,7 @@ function App() {
 
     <div className="container mt-3">
       <ul className="nav nav-tabs mb-4 fixed-header" style={{ borderBottom: '2px solid red', marginTop: '5px' }}>
+         
         <li className="nav-item">
           <button 
             className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`} 
@@ -237,6 +274,12 @@ function App() {
             Send Email
           </button>
         </li>
+
+        <li className="nav-item ml-auto">
+        <img src="/logo.png" alt="Logo" style={{ height: '40px' }} />
+    </li>
+
+       
       </ul>
 
 
@@ -251,7 +294,23 @@ function App() {
           </div>
         )}
 
-        {activeTab === 'process-job' && <div><h3>Process Job</h3>
+        {activeTab === 'process-job' && <div>
+          <h3>Process Job</h3>
+          <ul>
+        {selectedJobs.map((file, index) => (
+          <li key={index}>{file.name}</li>
+        ))}
+      </ul>
+
+      {/* Input pour le téléversement multiple */}
+      <input
+        type="file"
+        multiple
+        className="form-control mb-3"
+        onChange={handleJobUpload}
+      />
+
+          
 
           <button onClick={processJobs} className="btn btn-primary mb-3" style={{ backgroundColor: 'red', borderColor: 'red' }}>
               Process Jobs
@@ -457,7 +516,7 @@ function App() {
 
 
 
-        {activeTab === 'chat' && <div><h3>Chat</h3><p>Work in progress...</p></div>}
+        {activeTab === 'chat' && <Dashboard/>}
       </div>
 
     
